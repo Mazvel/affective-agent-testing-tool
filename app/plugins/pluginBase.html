@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block customCSS %}
+<link href="/static/css/pluginBase.css" rel="stylesheet">
+  {% block pluginCustomCSS %}
+  {% endblock %}
+  {% block pluginCustomJS %}
+  {% endblock %}
+{% endblock %}
+
+{% block contentNoContainer %}
+<div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            {% if plugins %}
+              {% for plugin in plugins %}
+                {% if loop.index == index %}
+                    <li class="active"><a href="/plugins?name={{ plugin }}">{{ pluginNames[loop.index0] }} </a><span class="sr-only">(current)</span></li>
+                {% else %}
+                  <li><a href="/plugins?name={{ plugin }}">{{ pluginNames[loop.index0] }} </a></li>
+                {% endif %}
+                </li>
+              {% endfor %} 
+            {% endif %}
+          </ul>
+        </div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          <div class="container">
+          {% block errorMessages %}
+          {% endblock %}
+          <div>
+          {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                    {% if category == 'message' %}
+                      <div class="alert alert-warning" role="alert">
+                    {% else %}
+                      <div class="alert alert-{{ category }}" role="alert">
+                    {% endif %}
+                      {{ message }}
+                    </div>
+                {% endfor %}
+              {% endif %}
+          {% endwith %}
+          </div>
+        </div>
+          {% block pluginTitle %}
+          {% endblock %}
+          {% if data %}
+            {% block pluginContent %}
+            {% endblock %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,6 @@
+#formContainer{
+  max-width: 700px;
+  min-width: 423px;
+} button.floatRight{
+  float:right;
+}

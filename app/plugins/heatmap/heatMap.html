@@ -1,0 +1,305 @@
+{% extends "pluginBase.html" %}
+{% block pluginCustomCSS %}
+  <style>
+        #visualizationContent { display:none;}
+        
+  </style>
+  <link href="/static/css/gameMapStyle.css" rel="stylesheet">
+{% endblock %}
+{% block pluginCustomJS %}
+  <script src="/static/js/heatmap.js-2.0/build/heatmap.js"></script>
+  <script src="/static/js/jquery-1.11.3.min.js"></script>
+  <script src="/static/js/zoomPan.js"></script>
+  <script src="/static/js/d3.v3.min.js"></script>
+  <script src="/static/js/gameMap.js"></script>
+{% endblock %}
+{% block pluginTitle %}
+<h1 class="page-header">Location Map</h1>
+{% endblock %}
+{% block pluginContent %}
+<div class="visualization center">    
+    <div class="panel panel-primary">
+      <div class="panel-heading">
+        <h3 class="panel-title">Location Map Visualization</h3>
+      </div>
+      <div class="panel-body">
+        <div class="container" id="visualizationContent">
+          <div class="row show-grid">
+            <div class="col-xs-3">
+              <select class="form-control" id="agentSelector" placeholder=".col-xs-2" onChange="changeHeatMapAgent()"></select>
+            </div>
+            <div class="col-xs-3">
+              <select  class="form-control" id="agentTypeSelector"  placeholder=".col-xs-2" onChange="changeHeatMapAgentType()"></select>
+            </div>
+          </div>
+          <div class="row top-buffer" >
+            <div class="col-xs-6 " id="heatMapContainer">
+            </div>
+          </div>
+          <div class="row" >
+            <div class="col-xs-7 ">
+              <h3> Event Overlay Selector </h3>
+            </div>
+          </div>
+          <div class="row col-md-8" >
+            <div class="col-xs-4"><input type="checkbox" class="eventType" name="Select All" value="all"> <b>Select All</b> </div>
+            {% if data.eventTypes %}
+              {% for type in data.eventTypes %}
+                 <div class="col-xs-4"><input type="checkbox" class="eventType" name="{{ type.name }}" value={{ type.id }}> {{ type.name }} </div>
+              {% endfor %}
+            {% else %}
+              <p> No event type data. </p>
+            {% endif %}
+          </div>
+          <div class="row " >
+            <div class="col-xs-8 ">
+              <h3> Area Select</h3>
+              <p> Select an area on the game map by zooming and panning (dragging). This area can be used to filter events in the event inspector. </p>
+              <button class="btn btn-sm btn-success floatRight" type="button" onclick="areaSelect();">Inspect Selected Area</button>
+            </div>
+          </div>
+        </div>
+        <div class="spinner-loader" id="loadingSpinnerDiv">
+          Loading…
+        </div>
+      </div>      
+    </div>
+    <div id="hiddenHeatMapContainer">
+    </div>
+  </div>
+  <script>
+    var agentTypeSelector = document.getElementById("agentTypeSelector");
+    var agentSelector = document.getElementById("agentSelector"); 
+    var dataLoaded = false;
+    var heatmap;
+    var heatMapCanvas;
+    var zoomPanCanvas;
+    var npcInfo = {};
+    var backgroundImage;
+    var gameMap;
+    var eventTypes = [];
+    var events = {};
+    {% if backgroundImage %}
+      backgroundImage = {path: "{{backgroundImage.fileName}}", width: parseFloat("{{backgroundImage.width}}"), height: parseFloat("{{backgroundImage.height}}") }
+    {% else %}
+      console.log("No background image included...");
+    {% endif %}
+    var background = new Image();
+    background.src = "/static/userfiles/gamemaps/" + backgroundImage.path
+    background.onload = function(){
+      loadData(background.width, background.height);
+      var canvasBackground = new Mazvel.ZoomPan.Image("Background", 0, 0, 1, background);
+      //zoomPanCanvas = new Mazvel.ZoomPan(document.getElementById("heatMapContainer"),555, 555, canvasBackground);
+        gameMap = new MazvelGameMap.gameMap(document.getElementById("heatMapContainer"), 850, 550, {
+        background : background,
+        gameWidth : backgroundImage.width , 
+        gameHeight : backgroundImage.height, 
+        agentSize : 16,
+      });
+      gameMap.addAgentTypes(eventTypes, "Event types", false);
+      createHiddenHeatmap();
+      // Now it is time to make the visualization div visible again and hide the loading div.
+      document.getElementById("loadingSpinnerDiv").setAttribute("style", "display:none;");
+      document.getElementById("visualizationContent").setAttribute("style", "display:block;");
+    }
+    function createHiddenHeatmap() {
+      var hiddenHeatmapContainer = document.getElementById("hiddenHeatMapContainer");
+      var radiusVar = Math.round(Math.max(backgroundImage.width, backgroundImage.height));
+      hiddenHeatmapContainer.setAttribute("style","width:"+background.width+"px;height:"+background.height+"px; display:none;");
+        heatmap = h337.create({
+        container: hiddenHeatmapContainer,
+        radius: Math.round(radiusVar * 0.01) + 5
+      }); 
+      heatMapCanvas = document.getElementsByClassName("heatmap-canvas")[0];
+      heatMapCanvas.visible = false;
+      changeHeatMapAgent();
+    }
+    
+
+    function loadData(heatmapWidth, heatmapHeight) {
+      // Let's start with loading the event types.
+      {% if data.eventTypes %}
+        {% for eventType in data.eventTypes %}
+          eventTypes.push({id: {{ eventType.id }}, name: "{{ eventType.name }}" });   
+          events[{{ eventType.id }}] = [];
+        {% endfor %}
+      {% else %}
+        console.log("No npc types included in data");
+      {% endif %}
+      // Load the events.
+      {% if data.events %}
+        {% for event in data.events %}
+          var tmpX = parseFloat({{event.x}});
+          var tmpY = parseFloat({{event.y}});
+          events[{{ event.type }}].push({ x: tmpX, y: tmpY, type: {{ event.type }}, id: {{ event.id }}, name: "{{ event.name }}"});
+        {% endfor %}
+      {% else %}
+        console.log("No event data available");
+      {% endif %}
+    
+      // Load the npc info.
+      {% if data.npcInfo %}
+        {% for npc in data.npcInfo %}
+          npcInfo[{{ npc.id }}] = {name: "{{ npc.name }}", typeID : {{ npc.typeID }}, type: "{{ npc.type }}"}
+        {% endfor %}
+      {% else %}
+        console.log("No npc info included in data.");
+      {% endif %}
+      console.log("width: " + heatmapWidth + ", height: " + heatmapHeight);
+      // First we need to build the filter for agent selection.
+      // We need to both fill the options in the select list and build a list
+      // containing all the data with each entry in the list as key.
+      locationDataNPCFilter = {}
+      var opt = document.createElement("option");
+      opt.value= "all"
+      opt.innerHTML = "All NPCs";
+      agentSelector.appendChild(opt);
+      {% if data.npcFilter %}
+        {% for entry in data.npcFilter %}
+          var opt = document.createElement("option");
+          opt.value= {{ entry.id }};
+          opt.innerHTML = "{{ entry.name|title }} (" + npcInfo[opt.value].type + ")";
+          agentSelector.appendChild(opt);
+          locationDataNPCFilter[{{ entry.id }}] = [];
+          {% for location in entry.data %}
+            var tmpX = parseFloat({{location.x}}) * heatmapWidth/backgroundImage.width;
+            var tmpY = parseFloat({{location.y}}) * heatmapHeight/backgroundImage.height;
+            locationDataNPCFilter[{{location.npcID}}].push({x: tmpX, y: tmpY, value: 2});
+          {% endfor %}
+        {% endfor %}
+      {% else %}
+        console.log("No npc filter location data to be displayed");
+      {% endif %}
+      // Build the filter for agent type selection.
+      locationDataNPCTypeFilter = {}
+      var opt = document.createElement("option");
+      opt.value= "all"
+      opt.innerHTML = "All NPC types";
+      agentTypeSelector.appendChild(opt);
+      {% if data.npcTypeFilter %}
+        {% for entry in data.npcTypeFilter %}
+          var opt = document.createElement("option");
+          opt.value= {{ entry.id }};
+          opt.innerHTML = "{{ entry.name|title }}";
+          agentTypeSelector.appendChild(opt);
+          locationDataNPCTypeFilter[{{ entry.id }}] = [];
+          {% for location in entry.data %}
+            var tmpX = parseFloat({{location.x}}) * heatmapWidth/3366;
+            var tmpY = parseFloat({{location.y}}) * heatmapHeight/2494;
+            locationDataNPCTypeFilter[{{entry.id}}].push({x: tmpX, y: tmpY, value: 2});
+          {% endfor %}
+        {% endfor %}
+      {% else %}
+        console.log("No location data to be displayed");
+      {% endif %}
+      // We have finished loading the raw data, let's display it.
+      dataLoaded = true; 
+    }
+    
+    
+    function setHeatMapData(data, singleAgent){
+      if (typeof(singleAgent)==='undefined') {
+        singleAgent = false;
+      }
+      heatmap.setData({
+        max: 5,
+        data: data
+      }); 
+      if (!singleAgent) {
+        var maximum = data.length*0.01
+        if (maximum > 100) {
+          maximum = 100;
+        }
+        heatmap.setDataMax(maximum);
+      }
+      var heatmapImage = new Image();
+      heatmapImage.src = heatMapCanvas.toDataURL();
+      //heatMapCanvas.style.visibility = "hidden";
+      
+      var p1 = new Promise(
+        function(resolve, reject) {
+            resolve(gameMap.updateHeatMapImage(heatmapImage));   
+        });
+      p1.then(gameMap.redrawMap());  
+      setTimeout(function() {
+         gameMap.redrawMap();     
+          }, 10);   
+      //zoomPanCanvas.objects.remove("Heatmap");
+      //zoomPanCanvas.objects.add(new Mazvel.ZoomPan.Image("Heatmap", 0, 0, 1, heatmapImage));
+    }
+    
+    $('input.eventType').change(function () {
+      if (this.value == "all") {
+        var checked = this.checked;
+        $( "input.eventType" ).each(function( index ) {
+          $( this ).prop('checked', checked);
+        });
+      } else {
+        var allChecked = true;
+        $( "input.eventType" ).each(function( index ) {
+          if (index != 0) {
+            if (!this.checked) {
+              allChecked = false;
+            }
+          }
+        });
+        $( "input.eventType").first().prop('checked', allChecked);
+      }
+      updateEventOverlay();
+     });
+    
+    function updateEventOverlay() {
+      data = [];
+      $( "input.eventType" ).each(function( index ) {
+      if (index != 0) {
+        if (this.checked) {
+          data = data.concat(events[this.value]);
+        }
+      }
+      });
+      gameMap.bindAgentLocationData(data);
+    }
+    
+    
+    function changeHeatMapAgent() {
+        if (!dataLoaded) {
+          return;
+        }
+        var x = agentSelector.value;
+        var data = []
+        agentTypeSelector.selectedIndex = 0;
+        if (x == "all"){ 
+            for (key in locationDataNPCFilter) {
+              data = data.concat(locationDataNPCFilter[key]);
+            }
+            setHeatMapData(data);
+        } else {
+          setHeatMapData(locationDataNPCFilter[x], true);
+        }
+    }
+    
+    function changeHeatMapAgentType() {
+        if (!dataLoaded) {
+          return;
+        }
+        var x = agentTypeSelector.value;
+        var data = []
+        agentSelector.selectedIndex = 0;
+        if (x == "all"){ 
+            for (key in locationDataNPCTypeFilter) {
+              data = data.concat(locationDataNPCTypeFilter[key]);
+            }
+            setHeatMapData(data);
+        } else {
+          setHeatMapData(locationDataNPCTypeFilter[x]);
+        }
+    }
+    
+    function areaSelect() {
+      var boundaries = gameMap.getSelectedArea();
+      location.href='/plugins?name=eventinspector&xLeft=' + boundaries[0] + '&xRight=' + boundaries[1] + '&yTop=' + boundaries[2] + '&yBottom=' + boundaries[3];
+    }
+  </script>
+
+
+{% endblock %}

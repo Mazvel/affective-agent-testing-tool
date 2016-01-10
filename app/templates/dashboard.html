@@ -1,0 +1,125 @@
+<!-- 
+This template is used to select which game map and which simulation session to inspect. 
+-->
+{% extends "base.html" %}
+{% block customCSS %}
+<link href="/static/css/dashboard.css" rel="stylesheet">
+{% endblock %}
+{% block contentWithContainer %}
+<div id="formContainer" class="center top">
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-4">
+        <p class="lead">Select game map </p>
+      </div>
+      <div class="col-xs-3">
+      
+      </div>
+      <div class="col-xs-1">
+      <button class="btn btn-sm btn-info floatRight" type="button" onclick="location.href='/uploadMap';">Upload New Map</button>
+      </div>
+    </div>
+    <form action="" method="post" class="form-signin" name="simulationSessionSelectionForm">
+          {{ form.hidden_tag() }}
+    <div class="row">
+      <div class="col-xs-8">
+        {% if gameMaps %}
+          <table class="table table-striped">
+          <thead>
+            <tr>
+              <th></th>
+              <th>#</th>
+              <th>Label</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for gameMap in gameMaps %}
+            <tr>
+              <td><input id="idRadio-{{ gameMap.id.id }}" name="mapRadio" type="radio" value="{{ gameMap.id }}" required> </td>
+              <td>{{ gameMap.id }}</td>
+              <td>{{ gameMap.label }}</td>
+              <td>{{ gameMap.date.strftime('%d-%m-%y %H:%M') }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% for error in form.gameBackgroundId.errors %}
+          <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}<br>
+        {% else %}
+          <div class="alert alert-danger" role="alert">
+            <strong>Oopsadazy!</strong> No game background image saved for this user.
+          </div>
+        {% endif %} 
+      </div> 
+    </div>
+    <div class="row">
+      <div class="col-xs-4">
+        <p class="lead">Select simulation session </p>
+      </div>
+      <div class="col-xs-3">
+      
+      </div>
+      <div class="col-xs-1">
+      <button class="btn btn-sm btn-info floatRight" type="button" onclick="location.href='/manage';">Manage Simulations</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-xs-8">
+        {% if simulationSessions %}
+          <table class="table table-striped">
+          <thead>
+            <tr>
+              <th></th>
+              <th>#</th>
+              <th>Label</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for simulationSession in simulationSessions %}
+            <tr>
+              <td><input id="idRadio-{{ simulationSession.id }}" name="idRadio" type="radio" value="{{ simulationSession.id }}" required> </td>
+              <td>{{ simulationSession.id }}</td>
+              <td>{{ simulationSession.label }}</td>
+              <td>{{ simulationSession.date.strftime('%d-%m-%y %H:%M') }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <button class="btn btn-sm btn-success floatRight" type="submit">Analyse</button>
+        {% for error in form.simulationSessoinId.errors %}
+          <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}<br>
+        </form>
+        
+        {% else %}
+          <div class="alert alert-danger" role="alert">
+            <strong>Oopsadazy!</strong> No simulations are registered in the database for this user. You need to run a simulation session before analyzing it!
+          </div>
+        {% endif %} 
+      </div> 
+    </div>
+
+</div>
+{% endblock %}
+{% block customScripts %}
+  <script>
+    $( document ).ready(function() {
+      $('input[type=radio][name=idRadio]').change(function() {
+        $('#simulationSessoinId').val(this.value)       
+      });
+      $('input[type=radio][name=mapRadio]').change(function() {
+        alert("here...");
+        $('#gameBackgroundId').val(this.value)       
+      });
+    });
+    // Let's auto select the last options, for convenience.
+    $('input[type=radio][name=mapRadio]:last').prop('checked', true);
+    $('#gameBackgroundId').val($('input[type=radio][name=mapRadio]:last').val());
+    $('input[type=radio][name=idRadio]:last').prop('checked', true);
+    $('#simulationSessoinId').val($('input[type=radio][name=idRadio]:last').val());
+  </script>
+{% endblock %} 
+ 

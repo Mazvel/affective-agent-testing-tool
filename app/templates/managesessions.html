@@ -1,0 +1,117 @@
+<!--
+Template used to delete simulation sessions.
+-->
+{% extends "base.html" %}
+{% block customCSS %}
+<link href="/static/css/dashboard.css" rel="stylesheet">
+<style>
+        #simulationIdsSelection { display:none;}
+  </style>
+{% endblock %}
+{% block contentWithContainer %}
+<div id="formContainer" class="center top">
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-4">
+        <p class="lead">Manage Simulation sessions </p>
+      </div>
+      <div class="col-xs-3">
+      
+      </div>
+      <div class="col-xs-1">
+        <button class="btn btn-sm btn-info floatRight" type="button" onclick="location.href='/dashboard';">Go Back</button>
+      </div>
+    </div>
+    {% if simulationSessions %}
+      <div class="row">
+        <div class="col-xs-8">
+        <form action="" method="post" class="form-signin" name="deleteSimulationSessionsForm" id="deleteSimulationSessionsForm">
+        {{ form.hidden_tag() }}
+        <div id="simulationIdsSelection" class="selDiv">
+        {{ form.simulationSessoinIds }}
+        </div>
+        <table id="simulationSessionsTable" class="table table-striped">
+        <thead>
+          <tr>
+            <th></th>
+            <th>#</th>
+            <th>Label</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input id="selectAllSessions" name="idRadio" type="checkbox" value=-1> </td>
+            <td>All</td>
+            <td>-</td>
+            <td>-</td>
+          </tr>
+        {% for simulationSession in simulationSessions %}
+          <tr>
+            <td><input id="idRadio-{{ simulationSession.id }}" name="idRadio" type="checkbox" value="{{ simulationSession.id }}"> </td>
+            <td>{{ simulationSession.id }}</td>
+            <td>{{ simulationSession.label }}</td>
+            <td>{{ simulationSession.date.strftime('%d-%m-%y %H:%M') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div> 
+    </div>
+    <div class="row">
+      <div class="col-xs-4">
+        
+      </div>
+      <div class="col-xs-3">
+      
+      </div>
+      <div class="col-xs-1">
+        <button class="btn btn-sm btn-success floatRight" type="button" onclick="submitForm()">Delete Selected</button>
+      </div>
+    </div>
+    
+    {% for error in form.simulationSessoinIds.errors %}
+      <span style="color: red;">[{{ error }}]</span>
+    {% endfor %}<br>
+    </form>
+    
+    {% else %}
+      <div class="alert alert-danger" role="alert">
+        <strong>Oopsadazy!</strong> No simulations are registered in the database for this user.
+      </div>
+    {% endif %} 
+
+
+</div>
+{% endblock %}
+{% block customScripts %}
+  <script>
+    $( document ).ready(function() {
+      $('input[type=checkbox][name=idRadio]').change(function() {
+        if (this.value == -1) {
+          if (this.checked) {
+            $('.selDiv option').prop('selected', true);
+            $('#simulationSessionsTable input').prop('checked', true);
+          } else {
+            $('.selDiv option').prop('selected', false);
+            $('#simulationSessionsTable input').prop('checked', false);
+          }
+        } 
+        if (this.checked) {
+          $('.selDiv option[value="' + this.value + '"]').prop('selected', true);
+        } else {
+          $('.selDiv option[value="' + this.value + '"]').prop('selected', false);
+        }
+      });
+    });
+    function submitForm() {
+      var confirmPrompt = confirm("You are about to delete the selected simulation sessions. All data in those sessions will be permanently deleted. This action is not reversable.");
+      if (confirmPrompt == false){
+        return;
+      }
+      document.getElementById("deleteSimulationSessionsForm").submit();
+    }
+    
+  </script>
+{% endblock %} 
+ 

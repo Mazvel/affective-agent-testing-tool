@@ -1,0 +1,31 @@
+<!--
+The login template.
+-->
+{% extends "base.html" %}
+{% block customCSS %}
+<link href="/static/css/login.css" rel="stylesheet">
+{% endblock %}
+{% block contentWithContainer %}
+  
+  <form action="" method="post" class="form-signin" name="login">
+  <h2 class="form-signin-heading">Please sign in</h2>
+      {{ form.hidden_tag() }}
+      <label for="{{ form.username.name }}" class="sr-only">{{ form.username.name }}</label>
+      <input id="{{ form.username.name }}" name="{{ form.username.name }}" type="username" class="form-control" placeholder="Username" required autofocus>
+      {% for error in form.username.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}<br>
+      <label for="{{ form.password.name }}" class="sr-only">{{ form.password.name }}</label>
+      <input id="{{ form.password.name }}" name="{{ form.password.name }}" type="password" class="form-control" placeholder="Password" required>
+      {% for error in form.password.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}<br>
+      <div class="checkbox">
+        <label>
+          <input id="{{ form.remember_me.name }}" name="{{ form.remember_me.name }}" type="checkbox" value="Remember me"> Remember me
+        </label>
+      </div>
+      <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+  </form>
+{% endblock %} 
+ 

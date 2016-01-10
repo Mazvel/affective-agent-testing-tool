@@ -1,0 +1,63 @@
+body {
+  padding-top: 50px;
+  padding-bottom: 30px;
+}
+
+.theme-dropdown .dropdown-menu {
+  position: static;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.theme-showcase > p > .btn {
+  margin: 5px 0;
+}
+
+.theme-showcase .navbar .container {
+  width: auto;
+}
+
+.starter-template {
+  padding: 40px 15px;
+  text-align: center;
+}
+
+#userNameNavBar{
+  color: white;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  padding-right: 20px;
+  float:right;
+} 
+#userNameNavBar>a {
+  color: #9d9d9d;
+  text-decoration: none;
+} 
+#userNameNavBar>a:hover {
+  color: white;
+  text-decoration: none;
+} 
+#userNameNavBar>a:visited {
+  text-decoration: none;
+} 
+#userNameNavBar>a:active {
+  color: white;
+  text-decoration: none;
+} 
+#userNameNavBar>a:link {
+  color: white;
+  text-decoration: none;
+} 
+#userNameNavBar>span {
+  padding-right: 10px;
+}
+
+div.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+div.top {
+  padding-top : 20px;
+}
+.top-buffer { margin-top:20px; }

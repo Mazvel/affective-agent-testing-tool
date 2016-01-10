@@ -1,0 +1,105 @@
+<!--
+Template used to upload new game backgrounds that are used by the map visualizations.
+-->
+{% extends "base.html" %}
+{% block customCSS %}
+<link href="/static/css/dashboard.css" rel="stylesheet">
+{% endblock %}
+{% block contentWithContainer %}
+<div id="formContainer" class="center top">
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-4">
+        <p class="lead">Upload game background </p>
+      </div>
+      <div class="col-xs-3">
+      
+      </div>
+      <div class="col-xs-1">
+        <button class="btn btn-sm btn-info floatRight" type="button" onclick="location.href='/dashboard';">Go Back</button>
+      </div>
+    </div>
+      <form action="" method="post" class="form-signin" name="uploadGameBackgroundForm" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      <div class="row"> 
+        <div class="col-xs-4"> 
+        {{ form.gameBackground }}
+        </div> 
+        <div class="col-xs-4"> 
+        {% for error in form.gameBackground.errors %}
+          <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+        </div> 
+      </div>
+      <div class="row top-buffer">
+        <div class="col-xs-4">
+        <label for="{{ form.label.name }}" class="sr-only">{{ form.label.label }}</label>
+        <input id="{{ form.label.name }}" name="{{ form.label.name }}" type="text" class="form-control" placeholder="Label" required autofocus>
+        </div> 
+        <div class="col-xs-4">
+        {% for error in form.label.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="row top-buffer"> 
+        <div class="col-xs-4">
+        <label for="{{ form.width.name }}" class="sr-only">{{ form.width.label }}</label>
+        <input id="{{ form.width.name }}" name="{{ form.width.name }}" type="number" class="form-control" placeholder="Gameworld map width" required>
+        </div> 
+        <div class="col-xs-4"> 
+        {% for error in form.width.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="row top-buffer"> 
+        <div class="col-xs-4">
+        <label for="{{ form.height.name }}" class="sr-only">{{ form.height.label }}</label>
+        <input id="{{ form.height.name }}" name="{{ form.height.name }}" type="number" class="form-control" placeholder="Gameworld map height" required>
+        </div> 
+        <div class="col-xs-4">
+          {% for error in form.height.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}        
+        </div> 
+      </div>
+      <div class="row">
+        <div class="col-xs-4">
+          
+        </div>
+        <div class="col-xs-3">
+        
+        </div>
+        <div class="col-xs-1">
+          <button class="btn btn-sm btn-success floatRight" type="submit">Upload Background</button>
+        </div>
+      </div>  
+      </form>
+
+
+</div>
+{% endblock %}
+{% block customScripts %}
+  <script>
+    $( document ).ready(function() {
+      $('input[type=checkbox][name=idRadio]').change(function() {
+        if (this.value == -1) {
+          if (this.checked) {
+            $('.selDiv option').prop('selected', true);
+            $('#simulationSessionsTable input').prop('checked', true);
+          } else {
+            $('.selDiv option').prop('selected', false);
+            $('#simulationSessionsTable input').prop('checked', false);
+          }
+        } 
+        if (this.checked) {
+          $('.selDiv option[value="' + this.value + '"]').prop('selected', true);
+        } else {
+          $('.selDiv option[value="' + this.value + '"]').prop('selected', false);
+        }
+      });
+    });
+  </script>
+{% endblock %} 
+ 

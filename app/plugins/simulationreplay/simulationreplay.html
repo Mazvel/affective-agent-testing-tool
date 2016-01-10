@@ -1,0 +1,739 @@
+{% extends "pluginBase.html" %}
+{% block pluginCustomCSS %}
+  <link href="/static/css/playableTimelineStyle.css" rel="stylesheet">
+  <link href="/static/css/playbackControls.css" rel="stylesheet">
+  <link href="/static/css/gameMapStyle.css" rel="stylesheet">
+  <link href="/static/js/jquery-ui-1.11.4.custom/jquery-ui.css" rel="stylesheet">
+  <link href="/static/js/jquery-ui-1.11.4.custom/jquery-ui.theme.min.css" rel="stylesheet">
+  <style>
+      #visualizationContent { display:none;}     
+      #inspectedEventDetails { display:none;}
+      #inspectedEventMapDetails { display:none; }
+  </style>
+{% endblock %}
+{% block pluginCustomJS %}
+  <script src="/static/js/jquery-ui-1.11.4.custom/jquery-ui.min.js"></script>
+  <script src="/static/js/heatmap.js-2.0/build/heatmap.js"></script>
+  <script src="/static/js/d3.v3.min.js"></script>
+  <script src="/static/js/d3.legend.js"></script>
+  <script src="/static/js/playableTimeline.js"></script>
+  <script src="/static/js/zoomPan.js"></script>
+  <script src="/static/js/gameMap.js"></script>
+  
+{% endblock %}
+{% block pluginTitle %}
+<h1 class="page-header">Simulation Replay</h1>
+{% endblock %}
+{% block pluginContent %}
+
+
+<div class="visualization center"> 
+   
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Control Panel</h3>
+    </div>
+    <div class="panel-body">
+      <div class="container">
+          <div class="row" >
+            <p id="scrollThreshold">Use the slider to control playback speed.</p>
+            
+          </div> 
+          <div class="row">
+            <div class="col-xs-8">
+                <div id="playbackControlsContainer" class="playbackRelative">
+                  <div id="playBackTimeControl"> 
+                    <span id="currentPlaybackTime"> 00:00</span>
+                    <div id="sliderContainer">
+                      <div id="slider"></div>
+                    </div>
+                    <span id="totalPlaybackTime"> 00:00</span> 
+                  </div>
+                  <div class="overFlow">
+                    <div id="playPauseButtonContainer">
+                      <a id="playBackButton" class="playBackButton playBackButton_green play" onclick="playClicked(this)"></a>
+                    </div>
+                    <div id="playSpeedControlsContainer">
+                      <div id="playSpeedSliderContainer"> 
+                      <input type="range" min="25" max="500" step="25" value="100" list="steplist" oninput="onPlaybackSpeedChange(this.value)">
+                      <datalist id="steplist">
+                        <option>100</option>
+                      </datalist>
+                      </div>
+                      <p id="playBackSpeedIndicator">100% </p>
+                    </div>
+                  </div>
+                  
+                </div>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Event Timeline</h3>
+    </div>
+    <div class="panel-body">
+      <div class="container">
+      <div class="row" >
+        <p> By dragging this timeline you can control the playback time</p>
+      </div> 
+       <div class="row" >
+          <div class="col-xs-8 " id="eventTimelineContainer">
+          </div>
+        </div> 
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Emotional State</h3>
+    </div>
+    <div class="panel-body">
+      <div class="container">
+       <div class="row" >
+          <div class="col-xs-8">
+            <select class="form-control" id="agentSelector" placeholder=".col-xs-2" onChange="changeData()"></select>
+          </div>
+        </div>
+       <div class="row top-buffer" >
+          <div class="col-xs-8 " id="padTimelineContainer">
+          </div>
+        </div> 
+        <div class="row" >
+          <div class="col-xs-2 ">
+          </div>
+          <div class="col-xs-4 ">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th> Emotion </th>
+                  <th> Intensity</th>
+                </tr>
+              <thead>
+              <tbody id="emotionStateTableBody">
+              </tbody>
+            </table>
+          </div>
+          <div class="col-xs-2 ">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Character Location</h3>
+    </div>
+    <div class="panel-body">
+      <div class="container">
+       <div class="row" >
+          <div class="row" >
+            <div class="col-xs-6 " id="locationMapContainer">
+            </div>
+          </div>  
+        </div> 
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var offsetLeft;
+  var agentSelector = document.getElementById("agentSelector");
+  var playableTimeline;
+  var gameMap;
+  var emotionIntensityLines = {};
+  var npcTypeEmotionLines = {};
+  var npcEmotionalStates = {};
+  var npcEmotionStateTimes = {};
+  var npcPADLines = {};
+  var emotionData = {};
+  var npcLocationData = {};
+  var npcEmotionData = {};
+  var emotionTimes = [];
+  var emotionDataTimes = {};
+  var eventDict = {};
+  var eventData = [];
+  var eventTypes = [];
+  var eventTypeDict = {};
+  var npcTypes = [];
+  var npcInfo = {};
+  var dataLoaded = false;
+  var latestTime;
+  var lastTime;
+  var currentTime;
+  var playBack;
+  var playbackSpeed;
+  // Used to determine if we are at the end of the playback. Then we change icon back to show play.
+  var lastTime;
+  var backgroundImage;
+  var lastTimeInLocationData = 0;
+    {% if backgroundImage %}
+      backgroundImage = {path: "{{backgroundImage.fileName}}", width: parseFloat("{{backgroundImage.width}}"), height: parseFloat("{{backgroundImage.height}}") }
+    {% else %}
+      console.log("No background image included...");
+    {% endif %}
+  
+  var background = new Image();
+  background.src = "/static/userfiles/gamemaps/" + backgroundImage.path
+  background.onload = function(){
+    latestTime = new Date("{{ data.latestDate }}");
+    latestTime.setSeconds(latestTime.getSeconds() + 2);
+    var totalSeconds = Math.round(latestTime.getTime() / 1000);
+    var totalMinutes = Math.floor(totalSeconds / 60);
+    var remainingSeconds = totalSeconds - totalMinutes * 60;
+    var minuteText = totalMinutes;
+    var secondText = remainingSeconds;
+    if (remainingSeconds < 10) {
+      secondText = "0" + remainingSeconds;
+    }
+    $("#totalPlaybackTime").text(minuteText + ':' + secondText);
+    $( "#slider" ).slider({
+      orientation: "horizontal",
+      range: "min",
+      max: Math.round(latestTime.getTime() / 1000),
+      value: 0,
+      slide: updateCurrentTime
+    });
+    loadData();
+    currentTime = 0
+    playbackSpeed = 1;
+    console.log("NPC location data");
+    console.log(npcLocationData);
+    //var canvasBackground = new Mazvel.ZoomPan.Image("Background", 0, 0, 1, background);
+    gameMap = new MazvelGameMap.gameMap(document.getElementById("locationMapContainer"), 850, 550, {
+      background : background,
+      gameWidth : backgroundImage.width , 
+      gameHeight : backgroundImage.height, 
+      agentSize : 20,
+      agentClickedCallback : agentClicked
+    }); 
+    gameMap.addAgentTypes(npcTypes, "Agent types", true, "Selected Agent");
+    
+    
+    mainPlayableTimeline = new MazvelPlayableTimeline.playableTimeline(document.getElementById("eventTimelineContainer"), 850, {
+      endTime: latestTime,
+      zoomEventCallback: timelineDragged,
+      showLegend : true,
+      showBorder : true
+      });
+    mainPlayableTimeline.addEventTypes(eventTypes);
+    changeEventTimeLineData(eventData);
+    padPlayableTimeline = new MazvelPlayableTimeline.playableTimeline(document.getElementById("padTimelineContainer"), 750, {
+      endTime: latestTime,
+      showYAxis: true,
+      yScaleDomain: [-1,1],
+      zoomEventCallback: timelineDragged
+      });
+    padPlayableTimeline.addHorizontalSplitLine();
+    mainPlayableTimeline.initializePlayback();
+    //setInterval(onTimerTick, 33);
+    //changeTimeLineAgent();
+    //document.getElementById("loadingSpinnerDiv").setAttribute("style", "display:none;");
+    //document.getElementById("visualizationContent").setAttribute("style", "display:block;");
+    // Let's now initialize the playback time slider.
+    
+    playBack = false;
+    setInterval(mainLoop, 33);
+  }
+  function eventClicked(params){
+  }
+  function agentClicked(params) {
+    console.log("Agent clicked id: " + params.id);
+    agentSelector.value = params.id;
+    changeData();
+    
+  }
+  
+  function changeEventTimeLineData(data) {
+    mainPlayableTimeline.bindEventData(data);
+  }
+  
+
+  
+  function mainLoop(){
+    
+    if (playBack) {
+      var tmpTime = new Date();
+      var elapsed = tmpTime.getTime() - lastTime.getTime();
+      currentTime += Math.round(elapsed * playbackSpeed);
+      lastTime = tmpTime;       
+    }
+    var totalSeconds = Math.round(currentTime / 1000);
+    var totalMinutes = Math.floor(totalSeconds / 60);
+    var remainingSeconds = totalSeconds - totalMinutes * 60;
+    var minuteText = totalMinutes;
+    var secondText = remainingSeconds;
+    if (remainingSeconds < 10) {
+      secondText = "0" + remainingSeconds;
+    }
+    $("#currentPlaybackTime").text(minuteText + ':' + secondText);
+    $("#slider").slider('value', Math.round(currentTime/1000));
+    padPlayableTimeline.setPlaybackTime(new Date(currentTime));
+    mainPlayableTimeline.setPlaybackTime(new Date(currentTime));
+    updateEmotionalState();
+    updateNPCLocation();
+    if (currentTime >= (latestTime.getTime()) && playBack) {
+      playClicked(document.getElementById("playBackButton"));
+    }
+  }
+  
+  function updateCurrentTime(event, ui){
+    currentTime = ui.value * 1000;
+    lastTime = new Date();
+  }
+  
+  function timelineDragged(args) {
+    currentTime = args.currentTime.getTime();
+  }
+
+  function changePADLineData(data) {
+    padPlayableTimeline.bindTimeSeriesData(data);
+  }
+  
+  function updateNPCLocation(forceUpdate) {
+    var selectedAgent = agentSelector.value;
+    //currentTime = mainPlayableTimeline.getPlaybackTime();
+    //zoomPanCanvas.objects.remove("NPCLocation");
+    inputData = [];
+    agentData = [];
+    var latestTimeInData = 0;
+    for (key in npcLocationData) {
+      var typeId = npcInfo[key].typeID;
+      // Now we must find the left point and the right point.
+      var earliestTime = npcLocationData[key][0].time;
+      var latestTime = npcLocationData[key][npcLocationData[key].length - 1].time;
+      var currentTimeMillis = currentTime;
+      if (earliestTime < currentTimeMillis && currentTimeMillis < latestTime) {
+        var searchTime = 0;
+        var index = 0;
+        searchTime = -1;
+        while (searchTime < currentTimeMillis && index < npcLocationData[key].length) {          
+          searchTime = parseFloat(npcLocationData[key][index].time);
+          index++;
+        }
+        index--;
+        var lastX = npcLocationData[key][index - 1].x;
+        var lastY = npcLocationData[key][index - 1].y;
+        if (parseFloat(npcLocationData[key][index].time) > latestTimeInData) {
+          latestTimeInData = parseFloat(npcLocationData[key][index].time);
+        }
+        if (key == selectedAgent) {
+          agentData.push({name : npcInfo[key].name, x: lastX, y: lastY, type : typeId, id : key, highlight: true})
+        } else {
+          agentData.push({name : npcInfo[key].name, x: lastX, y: lastY, type : typeId, id : key})
+        }
+      }
+    }
+    if (lastTimeInLocationData != latestTimeInData) {
+      gameMap.bindAgentLocationData(agentData);
+      lastTimeInLocationData = latestTimeInData;
+    }
+    if (!(typeof forceUpdate == "undefined") && forceUpdate) {
+      gameMap.bindAgentLocationData(agentData);
+      lastTimeInLocationData = latestTimeInData;
+    }
+    
+    
+   /* var currentTimeMillis = currentTime.getTime();
+    if (earliestTime < currentTimeMillis && currentTimeMillis < latestTime) {
+      var searchTime = 0;
+      var index = 0;
+      searchTime = -1;
+      while (searchTime < currentTimeMillis && index < agentLocationData.length) {          
+        searchTime = parseFloat(agentLocationData[index].time);
+        index++;
+      }
+      index--;
+      var lastX = agentLocationData[index - 1].x;
+      var lastY = agentLocationData[index - 1].y;
+      var lastTime = agentLocationData[index - 1].time;
+      var nextX = agentLocationData[index].x;
+      var nextY = agentLocationData[index].y;
+      var  timeDiff = agentLocationData[index].time - lastTime;
+      var elapsedTime = currentTime - lastTime;
+      //console.log("Earliest Time: " + earliestTime + ".Last time:" + lastTime + ", next time: " +  agentLocationData[index + 1].time + ", current time: " + currentTimeMillis + ", elapsed time: " + elapsedTime);
+      var interpolatedX = elapsedTime/timeDiff * (nextX - lastX) + lastX;
+      var interpolatedY = elapsedTime/timeDiff * (nextY - lastY) + lastY;    
+    } else {
+    }*/    
+  }
+  
+  function findIndex(timeArray, target) {
+    // timeArray is a sorted array.
+    if (target < timeArray[0]) {
+      return -1;
+    }
+    for (var i = 0; i < timeArray.length -1; i++) {
+      if (timeArray[i] <= target && target < timeArray[i + 1]) {
+        return i;
+      }
+    }
+    if (timeArray[timeArray.length - 1] < target) {
+      return timeArray.length - 1;
+    } 
+    return -1;
+  }
+  
+  function updateEmotionalState() {
+    var selectedAgent = agentSelector.value;
+    if (selectedAgent == "none") {
+      // Display nothing...
+      var tableBody = document.getElementById("emotionStateTableBody");
+      tableBody.innerHTML = '';
+      var row = tableBody.insertRow(i);
+      var nameCell = row.insertCell(0); 
+      nameCell.innerHTML = "No agent selected...";
+      var intensityCell = row.insertCell(1); 
+      intensityCell.innerHTML = "";
+      return;
+    }
+    var agentEmotionalStates = npcEmotionData[selectedAgent];
+    var index = findIndex(emotionTimes, currentTime);
+    if (index == -1) {
+      // This means the currenTime was out of bounds. Display no emotions.
+      // Display nothing...
+        var tableBody = document.getElementById("emotionStateTableBody");
+        tableBody.innerHTML = '';
+        var row = tableBody.insertRow(i);
+        var nameCell = row.insertCell(0); 
+        nameCell.innerHTML = "No emotions...";
+        var intensityCell = row.insertCell(1); 
+        intensityCell.innerHTML = "";
+    } else {
+      var emotionalState = agentEmotionalStates = npcEmotionData[selectedAgent][emotionTimes[index]];
+      if (emotionalState.length == 0) {
+        // Display nothing...
+        var tableBody = document.getElementById("emotionStateTableBody");
+        tableBody.innerHTML = '';
+        var row = tableBody.insertRow(i);
+        var nameCell = row.insertCell(0); 
+        nameCell.innerHTML = "No emotions...";
+        var intensityCell = row.insertCell(1); 
+        intensityCell.innerHTML = "";
+      } else {
+        var tableBody = document.getElementById("emotionStateTableBody");
+        tableBody.innerHTML = '';
+        for (var i = 0; i < emotionalState.length; i++){
+          var row = tableBody.insertRow(i);
+          var nameCell = row.insertCell(0); 
+          nameCell.innerHTML = emotionalState[i].name;
+          var intensityCell = row.insertCell(1); 
+          intensityCell.innerHTML = parseFloat(emotionalState[i].intensity).toFixed(3);
+        }
+      }
+    }
+    /*var selectedAgent = agentSelector.value;
+    var agentEmotionalStates = npcEmotionalStates[selectedAgent];
+    var agentEmotionalStateTimes = npcEmotionStateTimes[selectedAgent];
+    var searchTime = 0;
+    var index = 0;
+    if (selectedAgent in npcEmotionalStates && agentEmotionalStateTimes.length > 0) {
+      searchTime = -1;
+      while (searchTime < currentTime && index < agentEmotionalStateTimes.length) {
+        searchTime = parseFloat(agentEmotionalStateTimes[index]);
+        index++;
+      }
+      index--;
+      var time = agentEmotionalStateTimes[index]
+      var tableBody = document.getElementById("emotionStateTableBody");
+      if (agentEmotionalStates[time].length == 0 || agentEmotionalStateTimes[0] > currentTime) {
+        // Display nothing...
+        var tableBody = document.getElementById("emotionStateTableBody");
+        tableBody.innerHTML = '';
+        var row = tableBody.insertRow(i);
+        var nameCell = row.insertCell(0); 
+        nameCell.innerHTML = "No emotions...";
+        var intensityCell = row.insertCell(1); 
+        intensityCell.innerHTML = "";
+      } else {
+        tableBody.innerHTML = '';
+        for (var i = 0; i < agentEmotionalStates[time].length; i++){
+          var row = tableBody.insertRow(i);
+          var nameCell = row.insertCell(0); 
+          nameCell.innerHTML = agentEmotionalStates[time][i].name;
+          var intensityCell = row.insertCell(1); 
+          intensityCell.innerHTML = parseFloat(agentEmotionalStates[time][i].intensity).toFixed(3);
+        }
+      }
+       
+    } else {
+      // Display nothing...
+      var tableBody = document.getElementById("emotionStateTableBody");
+      tableBody.innerHTML = '';
+      var row = tableBody.insertRow(i);
+      var nameCell = row.insertCell(0); 
+      nameCell.innerHTML = "No emotions...";
+      var intensityCell = row.insertCell(1); 
+      intensityCell.innerHTML = "";
+    }
+    */
+  }
+  
+  function loadData(){
+    // Let's start with loading the agent types.
+    {% if data.npcTypes %}
+      {% for npcType in data.npcTypes %}
+          npcTypes.push({id: {{ npcType.id }}, name: "{{ npcType.name }}" });   
+      {% endfor %}
+    {% else %}
+      console.log("No npc types included in data");
+    {% endif %}
+    // Load the npc info.
+    {% if data.npcInfo %}
+      {% for npc in data.npcInfo %}
+        npcInfo[{{ npc.id }}] = {name: "{{ npc.name }}", typeID : {{ npc.typeID }}, type: "{{ npc.type }}"}
+        npcEmotionData[{{ npc.id }}] = {};
+      {% endfor %}
+    {% else %}
+      console.log("No npc info included in data.");
+    {% endif %}
+    // Load the events.
+    {% if data.eventData %}
+      {% for event in data.eventData %}
+        var tmpDate = new Date("{{ event.timeStamp }}");
+        eventData.push({id: parseFloat("{{ event.eventID }}") , typeId: parseFloat("{{ event.typeID }}"), npcId: parseFloat("{{ event.npcID }}"), name: "{{ event.typeName }}", timeStamp: tmpDate, callback: eventClicked});
+        if (!({{ event.typeID }} in eventTypeDict)) {
+          eventTypeDict[{{ event.typeID }}] = true;
+          eventTypes.push({ name: "{{ event.typeName }}", id: "{{ event.typeID }}"});
+        }
+      {% endfor %}
+    {% else %}
+      console.log("No event data available");
+    {% endif %}
+    // Build the npc pad line filter
+    var opt = document.createElement("option");
+    opt.value= "none"
+    opt.innerHTML = "Select NPC";
+    agentSelector.appendChild(opt);
+    {% if data.npcPADLines %}
+      {% for entry in data.npcPADLines %}
+        var opt = document.createElement("option");
+        opt.value= {{ entry.id }};
+        opt.innerHTML = "{{ entry.name|title }} (" + npcInfo[opt.value].type + ")";
+        agentSelector.appendChild(opt);
+        npcPADLines[{{ entry.id }}] = [];
+        tmpPADLines = [];
+        {% for padLine in entry.data %}
+          
+          var color;
+          if ("{{ padLine.name }}" == "Pleasure") {
+            color = d3.rgb(255,50,50);
+          } else if ("{{ padLine.name }}" == "Arousal") {
+            color = d3.rgb(255,200,50);
+          } else if ("{{ padLine.name }}" == "Dominance") {
+            color = d3.rgb(50,150,255);
+          }
+          data = []
+          {% for padPoint in padLine.data %}
+            x = parseInt({{ padPoint.x }});
+            y = parseFloat({{ padPoint.y }});
+            data.push({"x" : x, "y" : y})
+          {% endfor %}
+          tmpPADLines.push({"name" : "{{ padLine.name }}", "color" : color, "data" : data });
+        {% endfor %}
+         npcPADLines[{{entry.id}}].push(tmpPADLines);
+      {% endfor %}
+    {% else %}
+      console.log("No npc pad lines to be displayed");
+    {% endif %}
+    
+    // Load emotion data
+    // Start with creating emotiondict. For every NPC we create a key. 
+    {% if data.emotionTimeData %}
+      {% for entry in data.emotionTimeData %}
+        emotionTimes.push({{ entry }});
+        for (var key in npcEmotionData) {
+          npcEmotionData[key][{{ entry }}] = []
+        }
+      {% endfor %}
+    {% else %}
+      console.log("No emotion time data available.");
+    {% endif %}
+    {% if data.emotions %}
+      {% for entry in data.emotions %}
+        var npcId = {{ entry.npc }}
+        var tmpDate = new Date("{{ entry.timeStamp }}").getTime();
+        if (typeof npcEmotionData[npcId][tmpDate] != "undefined") {
+          npcEmotionData[npcId][tmpDate].push({ type : {{ entry.id }}, intensity : {{ entry.intensity }}, name: "{{ entry.name }}" })
+        }
+      {% endfor %}
+    {% else %}
+      console.log("No emotion data available.");
+    {% endif %}
+    
+    
+    // We now must load the data for emotional states.
+    /*{% if data.emotions %}
+      {% for entry in data.emotions %}
+        if (!("{{ entry.npcID }}" in npcEmotionalStates)) {
+          npcEmotionalStates[{{ entry.npcID }}] = {};
+          npcEmotionStateTimes[{{ entry.npcID }}] = [];
+        }
+        var time = new Date("{{ entry.time }}").getTime();
+        if (!(time in npcEmotionalStates[{{ entry.npcID }}])) {
+          npcEmotionalStates[{{ entry.npcID }}][time] = [];
+          npcEmotionStateTimes[{{ entry.npcID }}].push(time);
+        }
+        npcEmotionalStates[{{ entry.npcID }}][time].push({"intensity" : "{{entry.intensity}}", "name" : "{{entry.name|title}}"}) 
+      {% endfor %}
+    {% else %}
+      console.log("No emotional state data available.");
+    {% endif %}*/
+    
+    //console.log("Emotion data");
+    //console.log(npcEmotionalStates);
+    // We now must load the data for emotional states.
+    /*{% if data.npcEmotionalStates %}
+      {% for entry in data.npcEmotionalStates %}
+        npcEmotionalStates[{{ entry.id }}] = []
+        {% for state in entry.data %}
+          emotions = []
+          {% for emotion in state.data %}  
+            emotions.push({"intensity" : "{{emotion.intensity}}", "name" : "{{emotion.name|title}}"});
+          {% endfor %}
+           var tmpDate = new Date("{{ state.time }}");
+          npcEmotionalStates[{{ entry.id }}].push({"time" : tmpDate.getTime(), "emotions" : emotions})
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      console.log("No emotional state data available.");
+    {% endif %}
+    */
+    // Now we must load the locations
+    {% if data.locations %}
+      {% for entry in data.locations %}
+        if (!("{{ entry.npcID }}" in npcLocationData)) {
+          npcLocationData[{{ entry.npcID }}] = [];
+        }
+        var tmpDate = new Date("{{ entry.timeStamp }}");
+        //console.log(tmpDate);
+        //console.log("{{ entry.npcID }}");
+        /*if (!(tmpDate.getTime() in npcEmotionalStates[{{ entry.npcID }}])) {
+          npcEmotionalStates[{{ entry.npcID }}][tmpDate.getTime()] = [];
+          // Now we must insert it into the right place.
+          for (var i = 0; i < npcEmotionStateTimes.length; i++) {
+            if (tmpDate.getTime() > npcEmotionStateTimes[i]) {
+              npcEmotionStateTimes.splice(i, 0, tmpDate.getTime()); 
+              break;
+            }
+          }
+        } else {
+        } */
+        
+        var tmpX = parseFloat("{{entry.x}}");
+        var tmpY = parseFloat("{{entry.y}}");
+        npcLocationData[{{ entry.npcID }}].push({"x" : tmpX, "y" : tmpY, "time" : tmpDate.getTime() });
+        
+      {% endfor %}
+    {% else %}
+      console.log("No location data available.");
+    {% endif %}
+    //console.log(npcEmotionStateTimes);
+    dataLoaded = true; 
+  }
+  
+  function changeData() {
+    if (!dataLoaded) {
+      return;
+    }
+    
+    var x = agentSelector.value;
+    var data = []
+    if (x != "none"){
+        changePADLineData(npcPADLines[x][0]);
+        // Now we must update the event timeline by higlighting the events of THIS npc.
+        // First create a new array to hold copy of all events.
+        tmpEventData = []
+        for (var i = 0; i < eventData.length; i++) {
+          if (eventData[i].npcId != x) {
+            tmpEventData.push({id: eventData[i].id , typeId: eventData[i].typeId, npcId: eventData[i].npcId, name: eventData[i].name, timeStamp: eventData[i].timeStamp, callback: eventClicked});
+          } else {
+            tmpEventData.push({highlight: true, id: eventData[i].id , typeId: eventData[i].typeId, npcId: eventData[i].npcId, name: eventData[i].name, timeStamp: eventData[i].timeStamp, callback: eventClicked});
+          }
+        }
+        changeEventTimeLineData(tmpEventData);
+        updateNPCLocation(true);
+        
+    }
+  }
+  
+  function playClicked(element) {
+      /*if (!mainPlayableTimeline.getPlaybackParamters()[0]) {
+        // Now we must resume the playback.
+        mainPlayableTimeline.setPlaybackParamters([true, , ]);
+        element.className = "playBackButton playBackButton_green pause";
+      }
+      else {
+        // Now we must pause the playback.
+        mainPlayableTimeline.setPlaybackParamters([false, , ]);
+        element.className = "playBackButton playBackButton_green play";
+       }
+       */
+       if (!playBack) {
+        if (currentTime >= (latestTime.getTime())) {
+          currentTime = 0;
+        }
+        playBack = true;
+        lastTime = new Date();
+        element.className = "playBackButton playBackButton_green pause";
+       } else {
+        playBack = false;
+        element.className = "playBackButton playBackButton_green play";
+       }
+    }
+    
+    function onTimerTick() {
+      padPlayableTimeline.setPlaybackTime(mainPlayableTimeline.getPlaybackTime());
+      updateEmotionalState();
+      updateNPCLocation();
+      if (Math.abs(mainPlayableTimeline.getPlaybackTime().getTime() - latestTime.getTime()) < 1000 && mainPlayableTimeline.getPlaybackParamters()[0] ) {
+        if (lastTime.getTime() == mainPlayableTimeline.getPlaybackTime().getTime()) {
+          playClicked(document.getElementById("playBackButton"));
+        }
+      }
+      //lastTime = mainPlayableTimeline.getPlaybackTime();
+    }
+    
+    function onPlaybackSpeedChange(value) {
+      playbackSpeed = value/100;
+     // mainPlayableTimeline.setPlaybackParamters([, value/100, ]);
+      if (value % 100 == 0) {
+        document.getElementById("playBackSpeedIndicator").innerHTML = value + "%";
+      } else {
+        document.getElementById("playBackSpeedIndicator").innerHTML = value + "%";
+      }
+    }
+    
+  $(window).scroll(function() {
+    if (isScrolledIntoView($("#scrollThreshold"))) {
+      $("#playbackControlsContainer").removeClass("playbackFixed");
+      $("#playbackControlsContainer").addClass("playbackRelative");
+    
+    } else {
+      $("#playbackControlsContainer").removeClass("playbackRelative");
+      $("#playbackControlsContainer").addClass("playbackFixed");
+      $("#playbackControlsContainer").css("left",offsetLeft +"px");
+    }
+  });
+  
+  function isScrolledIntoView(elem)
+  {
+      var $elem = $(elem);
+      var $window = $(window);
+
+      var docViewTop = $window.scrollTop();
+      var docViewBottom = docViewTop + $window.height();
+
+      var elemTop = $elem.offset().top;
+      var elemBottom = elemTop + $elem.height();
+
+      return ((elemBottom <= docViewBottom) && (elemTop >= docViewTop));
+  }
+  $( document ).ready(function() {
+    offsetLeft = $("#playbackControlsContainer").offset().left + $("#playbackControlsContainer").css("width").replace(/[^-\d\.]/g, '')/2;
+  });
+ </script>
+{% endblock %}

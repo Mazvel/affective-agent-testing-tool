@@ -1,0 +1,5 @@
+# This gitignore file is necessary to prevent any user files from being checked in
+# and also making sure that this folder shows up in version control.
+*
+ 
+!.gitignore

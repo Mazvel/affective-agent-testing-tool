@@ -1,0 +1,112 @@
+{% extends "pluginBase.html" %}
+{% block pluginCustomCSS %}
+  <style>
+        div.infoBlock { width: 500px; padding: 10 5 10 5; float: left; clear: right; margin: 10px;} 
+        #sessionInfo {}
+        #npcInfo {}
+  </style>
+{% endblock %}
+{% block pluginTitle %}
+<h1 class="page-header">Overview</h1>
+{% endblock %}
+{% block pluginContent %}
+  {% if data %}
+    {% if data.sessionInfo %}
+    <div id='sessionInfo' class='infoBlock'>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th colspan='2'><h4>Simulation session general information</h4></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Label</td>
+          <td>{{ data.sessionInfo.label }}</td>
+        </tr>
+        <tr>
+          <td>Date</td>
+          <td>{{ data.sessionInfo.date.strftime('%d-%m-%y %H:%M') }}</td>
+        </tr>
+        <tr>
+          <td>Session id</td>
+          <td>{{ data.sessionInfo.id }}</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    {% if data.npcType %}
+    <div id='npcInfo' class='infoBlock'>
+      <h4>Agent types in simulation</h4>
+      <table class="table table-striped">
+      <thead>
+        <tr>
+          <th >Name</th>
+          <th >#</th>
+          <th >Info</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for npcType in data.npcType %}
+        <tr>
+          <td >{{ npcType.name|title }} </td>
+          <td >{{ npcType.agents }} </td>
+          <td >{{ npcType.info }} </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    {% if data.emotionType %}
+    <div id='npcInfo' class='infoBlock'>
+      <h4>Emotion data in simulation</h4>
+      <table class="table table-striped">
+      <thead>
+        <tr>
+          <th >Name</th>
+          <th >#</th>
+          <th >Info</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emotionType in data.emotionType %}
+        <tr>
+          <td >{{ emotionType.name|title }} </td>
+          <td >{{ emotionType.points }} </td>
+          <td >{{ emotionType.info }} </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    {% if data.eventType %}
+    <div id='npcInfo' class='infoBlock'>
+      <h4>Event data in simulation</h4>
+      <table class="table table-striped">
+      <thead>
+        <tr>
+          <th >Name</th>
+          <th >#</th>
+          <th >Info</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eventType in data.eventType %}
+        <tr>
+          <td >{{ eventType.name|title }} </td>
+          <td >{{ eventType.points }} </td>
+          <td >{{ eventType.info }} </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+  {% else %}
+    <h3> No data available??? </h3>
+  {% endif %}
+  
+{% endblock %}

@@ -1,0 +1,73 @@
+.axis text{
+  font: 10px sans-serif;
+}
+.axis path,
+.axis line{
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+rect.border {
+  fill-opacity: 0;
+  stroke-width:1;
+  stroke:black;
+  shape-rendering: crispEdges;
+}
+
+path.borderPath{
+  shape-rendering: crispEdges;
+}
+
+rect.paddingForeground{
+  fill: #ffffff;
+}
+circle.agent:hover {
+  cursor:pointer;
+}
+
+circle.highlight{
+  stroke-width:3;
+  stroke: #FFFF00;
+}
+
+#playableTimelineTooltip{
+  color:white;
+  font-family: Futura,"Trebuchet MS",Arial,sans-serif;
+  font-size: 12px;
+  padding: 5px;
+  background-color: #428bca;
+  border-radius: 5px;
+  border: 1px solid #101010;
+  line-height: 130%;
+}
+
+rect.playableTimeLineTimeMarker {
+  fill: green;
+}
+
+rect.selectedArea {
+  fill:black;
+  fill-opacity:0.0;
+}
+
+rect.focusedEventStyle {
+  fill:yellow;
+  stroke-width: 3;
+  stroke: black;
+}
+
+rect.wholeArea {
+  fill:black;
+  fill-opacity:0.8;
+}
+
+.legend rect { 
+  stroke:black;
+  opacity:0.85;}
+ 
+.legendBoxRect {
+  fill:#e5e5e5;
+  stroke-width: 1;
+  stroke:black;
+  shape-rendering: crispEdges;
+}

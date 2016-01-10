@@ -1,0 +1,743 @@
+{% extends "pluginBase.html" %}
+{% block pluginCustomCSS %}
+  <link href="/static/css/eventTimelineStyle.css" rel="stylesheet">
+  <style>
+      #visualizationContent { display:none;}     
+      #inspectedEventDetails { display:none;}
+      #inspectedEventMapDetails { display:none; }
+      #inspectedEventImpactHeader { display:none; }
+      #inspectedEventImpactContent { display:none; }
+      #selectedArea { display:none;}
+      #eventHasNoImpact { display:none;}
+      span.green { color: green; }
+      span.red { color: red; }
+  </style>
+  <link href="/static/css/gameMapStyle.css" rel="stylesheet">
+{% endblock %}
+{% block pluginCustomJS %}
+  <script src="/static/js/heatmap.js-2.0/build/heatmap.js"></script>
+  <script src="/static/js/jquery-1.11.3.min.js"></script>
+  <script src="/static/js/d3.v3.min.js"></script>
+  <script src="/static/js/eventTimeline.js"></script>
+  <script src="/static/js/d3.v3.min.js"></script>
+  <script src="/static/js/selectedArea.js"></script>
+  <script src="/static/js/gameMap.js"></script>
+  <script src="/static/js/zoomPan.js"></script>
+{% endblock %}
+{% block pluginTitle %}
+<h1 class="page-header">Event Timeline and Inspector</h1>
+{% endblock %}
+{% block pluginContent %}
+<div class="visualization center">
+  
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Selected Area</h3>
+    </div>
+    <div class="panel-body">  
+      <div class="container" id="selectedArea">
+          <div class="row" >
+          {% if data.selectedArea %}
+            <p> To select another area please go back to the location or emotion map plug-ins. <p>
+            <div class="col-xs-8 " id="selectedAreaContainer">
+            
+            </div>
+          {% else %}
+            <p> You can filter events by location by selecting area from the location or emotion map plug-ins. <p>
+          {% endif %}
+          </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Event Timeline</h3>
+    </div>
+    <div class="panel-body">
+      <div class="container" id="visualizationContent">
+          
+          <div class="row" >
+            <div class="col-xs-8 " id="timelineContainer">
+            </div>
+          </div>
+          <div class="row top-buffer">
+            <div class="col-xs-2">
+            </div>
+            <!--<div class="col-xs-2">
+              <select class="form-control" id="emotionSelector" placeholder=".col-xs-2" onChange="changeTimeLineEmotionLine()"></select>
+            </div> -->
+            <div class="col-xs-2">
+              <select class="form-control" id="agentSelector" placeholder=".col-xs-2" onChange="changeTimeLineAgent()"></select>
+            </div>
+            <div class="col-xs-2">
+              <select class="form-control" id="agentTypeSelector" placeholder=".col-xs-2" onChange="changeTimelineAgentType()" ></select>
+            </div>
+            <div class="col-xs-2">
+            </div>
+          </div>
+        </div>
+        
+        <div class="spinner-loader" id="loadingSpinnerDiv">
+          Loading…
+        </div>
+    </div>
+  </div>
+  <div class="panel panel-primary">
+    <div class="panel-heading">
+      <h3 class="panel-title">Event Inspector</h3>
+    </div>
+    <div class="panel-body">
+      <div class="container">
+       <div class="row" >
+          <div class="col-xs-4 " id="inspectedEventDetails">
+            <div class="table">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th> Event details </th>
+                    <th></th>
+                  </tr>
+                <thead>
+                <tbody>
+                  <tr>
+                    <td >Event type </td>
+                    <td id="eventTableEventName">Zombie death </td>
+                  </tr>
+                  <tr>
+                    <td >Causal NPC </td>
+                    <td id="eventTableNpcName">Lalli </td>
+                  </tr>
+                  <tr>
+                    <td >Time </td>
+                    <td id="eventTableTime" >02:02 </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="col-xs-4 " id="selectEventPrompt">
+            Select an event from the timeline.
+          </div>
+        </div>
+        <div class="row top-buffer" id="inspectedEventMapDetails">
+            <div class="col-xs-6 " id="mapContainer">
+            </div>
+        </div>
+        <div class="row" id="inspectedEventImpactHeader" >
+            <h3>Event Impact on Emotional States </h3>
+        </div>
+        <div class="row" id="inspectedEventImpactContent" >
+          <div class="col-xs-4 ">
+            <div id="eventHasNoImpact">
+              <p > This event does not seem to have any impact on the emotional states of the agents. </p>
+              <button class="btn btn-sm btn-info floatRight" type="button" onclick="showEmotionalState()">Show Emotional States</button>
+            </div>
+            <div id="impactDiv" class="table top-buffer">
+              <p id="noEmotionalStatesWarning"> Nothing to show. Make sure to log the emotional states before and after each event.</p>
+              <table class="table table-striped" id="eventImpactTable">
+                <thead>
+                  <tr>
+                    <th id="eventImpactTableNPCName"> Event details </th>
+                    <th></th>
+                  </tr>
+                <thead>
+                <tbody>
+                  <tr>
+                    <td >Event type </td>
+                    <td id="eventTableEventName">Zombie death </td>
+                  </tr>
+                  <tr>
+                    <td >Causal NPC </td>
+                    <td id="eventTableNpcName">Lalli </td>
+                  </tr>
+                  <tr>
+                    <td >Time </td>
+                    <td id="eventTableTime" >02:02 </td>
+                  </tr>
+                </tbody>
+                <thead>
+                  <tr>
+                    <th> Event details </th>
+                    <th></th>
+                  </tr>
+                <thead>
+                <tbody>
+                  <tr>
+                    <td >Event type </td>
+                    <td id="eventTableEventName">Zombie death </td>
+                  </tr>
+                  <tr>
+                    <td >Causal NPC </td>
+                    <td id="eventTableNpcName">Lalli </td>
+                  </tr>
+                  <tr>
+                    <td >Time </td>
+                    <td id="eventTableTime" >02:02 </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  var agentSelector = document.getElementById("agentSelector");
+  var agentTypeSelector = document.getElementById("agentTypeSelector");
+  //var emotionSelector = document.getElementById("emotionSelector");
+  var eventTimeline;
+  var zoomPanCanvas;
+  var emotionIntensityLines = {};
+  var npcTypeEmotionLines = {};
+  var emotionData = {};
+  var eventDict = {};
+  var eventTypes = [];
+  var eventTypeDict = {};
+  var npcInfo = {};
+  var npcTypes = [];
+  var npcEmotionData = {};
+  var npcLocationData = {};
+  var dataLoaded = false;
+  var selectedArea;
+  var gameMap;
+  var backgroundImage;
+    {% if backgroundImage %}
+      backgroundImage = {path: "{{backgroundImage.fileName}}", width: parseFloat("{{backgroundImage.width}}"), height: parseFloat("{{backgroundImage.height}}") }
+    {% else %}
+      console.log("No background image included...");
+    {% endif %}
+  var background = new Image();
+  background.src = "/static/userfiles/gamemaps/" + backgroundImage.path
+  background.onload = function(){
+    {% if data.selectedArea %}
+    selectedArea = new MazvelSelectedArea.gameMap(document.getElementById("selectedAreaContainer"), 250, 250, {
+        background : background,
+        gameWidth : backgroundImage.width , 
+        gameHeight : backgroundImage.height, 
+      });
+    selectedArea.addArea({{data.selectedArea.xLeft}}, {{data.selectedArea.xRight}}, {{data.selectedArea.yTop}}, {{data.selectedArea.yBottom}});
+    {% endif %}
+    gameMap = new MazvelGameMap.gameMap(document.getElementById("mapContainer"), 850, 550, {
+      background : background,
+      gameWidth : backgroundImage.width , 
+      gameHeight : backgroundImage.height, 
+      agentSize : 20,
+    }); 
+    
+    
+    //var canvasBackground = new Mazvel.ZoomPan.Image("Background", 0, 0, 1, background);
+    //zoomPanCanvas = new Mazvel.ZoomPan(document.getElementById("mapContainer"),555, 555, canvasBackground); 
+    loadData();
+    gameMap.addAgentTypes(npcTypes, "Agent types", true, "Causal Agent");
+    var latestTime = new Date("{{ data.latestDate }}");
+    latestTime.setSeconds(latestTime.getSeconds() + 2);
+    eventTimeline = new MazvelEventTimeline.eventTimeline(document.getElementById("timelineContainer"), 850, { 
+      endTime: latestTime,
+      showLegend : true,
+      showBorder : true      
+      });
+    
+    eventTimeline.addEventTypes(eventTypes);
+    changeTimeLineAgent();
+    changeTimeLineEmotionLine();
+    document.getElementById("loadingSpinnerDiv").setAttribute("style", "display:none;");
+    document.getElementById("visualizationContent").setAttribute("style", "display:block;");
+    document.getElementById("selectedArea").setAttribute("style", "display:block;");
+  }
+  function eventClicked(params){
+    document.getElementById("eventTableEventName").innerHTML = eventDict[params.id].eventType;
+    document.getElementById("eventTableNpcName").innerHTML = eventDict[params.id].causalNPC;
+    var eventTimeMillies = eventDict[params.id].timeStamp.getTime();
+    console.log(eventTimeMillies);
+    var minutes = eventDict[params.id].timeStamp.getMinutes()
+    var seconds = eventDict[params.id].timeStamp.getSeconds();
+    if (minutes < 10) {
+      minutes = "0" + minutes;
+    }
+    if (seconds < 10) {
+      seconds = "0" + seconds;
+    }
+    document.getElementById("eventTableTime").innerHTML = minutes + ":" + seconds;
+    //zoomPanCanvas.objects.remove("Location");
+    //zoomPanCanvas.objects.add(new Mazvel.ZoomPan.Rectangle("Location", eventDict[params.id].x - 15, eventDict[params.id].y - 15, 1, 30, 30, "#19D1FF", true));
+    //zoomPanCanvas.drawCanvas();
+    document.getElementById("selectEventPrompt").setAttribute("style", "display:none;");
+    document.getElementById("inspectedEventDetails").setAttribute("style", "display:block;");
+    document.getElementById("inspectedEventMapDetails").setAttribute("style", "display:block;");
+    document.getElementById("inspectedEventImpactHeader").setAttribute("style", "display:block;");
+    document.getElementById("inspectedEventImpactContent").setAttribute("style", "display:block;");
+    
+    var impactDict = getEventImpact(eventDict[params.id].timeStamp.getTime());
+    var emptyDict = true;
+    for(var key in impactDict) {
+      if (impactDict.hasOwnProperty(key) && key != "&!*hadImpact") {
+         emptyDict = false;
+      }
+    }
+    
+    $("#noEmotionalStatesWarning").hide();
+    if (emptyDict || !impactDict["&!*hadImpact"]) {
+      document.getElementById("eventHasNoImpact").setAttribute("style", "display:block;");
+      $( "#impactDiv" ).hide();
+      if (emptyDict) {
+        // Need to alert the user that there is nothing to see.
+        $("#noEmotionalStatesWarning").show();
+        updateNPCLocation([], eventTimeMillies, eventDict[params.id].causalNPC);
+        
+      }
+    } else {
+      $( "#impactDiv" ).show();
+      var impcatedAgents = [];
+      for( var key in impactDict) {
+        var addedAgent = false;
+        if (key != "&!*hadImpact"){
+          for (var i = 0; i < impactDict[key].length; i++) {
+            if (impactDict[key][i].difference != 0) {
+              if (!addedAgent) {
+                impcatedAgents.push(key);
+                addedAgent = true;
+              }
+            }
+          }
+        }
+      }
+      updateNPCLocation(impcatedAgents, eventTimeMillies, eventDict[params.id].causalNPC);
+      //gameMap.updateFocusedEvent({ x: eventDict[params.id].x, y: eventDict[params.id].y});
+      document.getElementById("eventHasNoImpact").setAttribute("style", "display:none;");
+    }
+    gameMap.updateFocusedEvent({ x: eventDict[params.id].x, y: eventDict[params.id].y});
+    var table = document.getElementById("eventImpactTable");    
+    table.innerHTML = '';
+    var body = table.createTBody();
+    var counter = 0;
+    for (var key in impactDict){
+      if (key == "&!*hadImpact") {
+        continue;
+      }
+      var row = body.insertRow(counter);
+      var npcNameCell = row.insertCell(); 
+      counter++;
+      npcNameCell.innerHTML = "<b> " + npcInfo[key].name + " (" + npcInfo[key].type + ")</b>";
+      npcNameCell.colSpan = "2";
+      for (var i = 0; i < impactDict[key].length; i++) {
+        var tmpRow = body.insertRow(counter);
+        counter++;
+        var nameCell = tmpRow.insertCell(0);
+        nameCell.innerHTML = impactDict[key][i].name;        
+        var intensityCell = tmpRow.insertCell(1);
+        if (Math.round(impactDict[key][i].difference > 0)) {
+          intensityCell.innerHTML = (Math.round(impactDict[key][i].intensity * 1000) / 1000) + " (<span class='green'><b>+" + (Math.round(impactDict[key][i].difference * 1000) / 1000) + "</b></span>)";
+        } else if (Math.round(impactDict[key][i].difference < 0)) {
+          intensityCell.innerHTML = (Math.round(impactDict[key][i].intensity * 1000) / 1000) + " (<span class='red'><b>" + (Math.round(impactDict[key][i].difference * 1000) / 1000) + "</b></span>)";
+        } else {
+          intensityCell.innerHTML = (Math.round(impactDict[key][i].intensity * 1000) / 1000);
+        }
+      }
+    }
+  }
+  
+  function getEventImpact(time){
+    // Now we must search this time AND this time + 10.
+    impactDict = {}
+    var hadImpact = false;
+    for (var npc in npcInfo) {
+      if (!(time in npcEmotionData[npc])) {
+        continue;
+      }
+      if (npcEmotionData[npc][time].length == 0) {
+        if (npcEmotionData[npc][time + 10].length == 0) {
+          // Nothing to do here.
+          continue;
+        } else {
+          impactDict[npc] = npcEmotionData[npc][time + 10]; 
+        }
+      } else {
+        // This case is a bit trickier...
+        // Now we must compare the previous state with the next one and ONLY mark the difference
+        oldDict = {};
+        diffList = [];
+        for (var i = 0; i < npcEmotionData[npc][time].length; i++) {
+          oldDict[npcEmotionData[npc][time][i].name] = npcEmotionData[npc][time][i];
+        }
+        for (var i = 0; i < npcEmotionData[npc][time + 10].length; i++) {
+          if (!(npcEmotionData[npc][time + 10][i].name in oldDict)) {
+            if (npcEmotionData[npc][time + 10][i].intensity > 0) {
+              diffList.push({type: npcEmotionData[npc][time + 10][i].type, intensity: npcEmotionData[npc][time + 10][i].intensity, difference: npcEmotionData[npc][time + 10][i].intensity , name: npcEmotionData[npc][time + 10][i].name});
+              hadImpact = true;
+            }
+          } else {
+            var tmpIntensityDiff = npcEmotionData[npc][time + 10][i].intensity - oldDict[npcEmotionData[npc][time + 10][i].name].intensity;
+            if (tmpIntensityDiff != 0) {
+              diffList.push({ type : npcEmotionData[npc][time + 10][i].type , intensity: npcEmotionData[npc][time + 10][i].intensity, difference : tmpIntensityDiff, name : npcEmotionData[npc][time + 10][i].name });
+              hadImpact = true;
+            } else {
+              diffList.push({ type : npcEmotionData[npc][time + 10][i].type , intensity: npcEmotionData[npc][time + 10][i].intensity, difference : tmpIntensityDiff, name : npcEmotionData[npc][time + 10][i].name });
+            }
+          }
+        }
+        if (diffList.length > 0) {
+          impactDict[npc] = diffList;
+        }
+      }
+      
+    }
+    impactDict["&!*hadImpact"] = hadImpact; 
+    return impactDict;
+  }
+  
+  function showEmotionalState() {
+    $( "#impactDiv" ).toggle();
+  }
+  
+  function updateNPCLocation(impcatedAgents, eventTime, causalAgent) {
+    console.log("I am in the update npc location thing");
+    //currentTime = mainPlayableTimeline.getPlaybackTime();
+    inputData = [];
+    agentData = [];
+    var latestTimeInData = 0;
+    for (var i = 0; i <impcatedAgents.length; i++) {
+      var key = impcatedAgents[i];
+      var typeId = npcInfo[key].typeID;
+      // Now we must find the left point and the right point.
+      var earliestTime = npcLocationData[key][0].time;
+      var latestTime = npcLocationData[key][npcLocationData[key].length - 1].time;
+      var currentTimeMillis = eventTime;
+      if (earliestTime < currentTimeMillis && currentTimeMillis < latestTime) {
+        var searchTime = 0;
+        var index = 0;
+        searchTime = -1;
+        while (searchTime < currentTimeMillis && index < npcLocationData[key].length) {          
+          searchTime = parseFloat(npcLocationData[key][index].time);
+          index++;
+        }
+        index--;
+        var lastX = npcLocationData[key][index - 1].x;
+        var lastY = npcLocationData[key][index - 1].y;
+        if (parseFloat(npcLocationData[key][index].time) > latestTimeInData) {
+          latestTimeInData = parseFloat(npcLocationData[key][index].time);
+        }
+        if (npcInfo[key].name == causalAgent) {
+          agentData.push({name : npcInfo[key].name, x: lastX, y: lastY, type : typeId, id : key, highlight: true})
+        } else {
+          agentData.push({name : npcInfo[key].name, x: lastX, y: lastY, type : typeId, id : key})
+        }
+      }
+    }
+    gameMap.bindAgentLocationData(agentData);
+      
+  }
+  
+  function changeTimeLineData(data) {
+    eventTimeline.bindEventData(data);
+  }
+  
+  function changeTimeLineEmotionData(data) {
+    //eventTimeline.bindEmotionData(data);
+  }
+  
+  function loadData(){
+    // Let's start with loading the agent types.
+    {% if data.npcTypes %}
+      {% for npcType in data.npcTypes %}
+          npcTypes.push({id: {{ npcType.id }}, name: "{{ npcType.name }}" });   
+      {% endfor %}
+    {% else %}
+      console.log("No npc types included in data");
+    {% endif %}
+    // Load the npc info.
+    {% if data.npcInfo %}
+      {% for npc in data.npcInfo %}
+        npcInfo[{{ npc.id }}] = {name: "{{ npc.name }}", typeID : {{ npc.typeID }}, type: "{{ npc.type }}"}
+        // Initialize dictionary for this npc in the npcEmotionData dictionary
+        npcEmotionData[{{ npc.id }}] = {};
+      {% endfor %}
+    {% else %}
+      console.log("No npc info included in data.");
+    {% endif %}
+    {% if data.eventData %}
+      {% for entry in data.eventData %}
+        var tmpDate = new Date("{{ entry.timeStamp }}");
+        var tmpX = parseFloat("{{ entry.x }}");
+        var tmpY = parseFloat("{{ entry.y }}");
+        eventDict["{{ entry.eventID }}"] = {x: tmpX, y: tmpY, timeStamp: tmpDate, eventType: "{{ entry.typeName }}", causalNPC: "{{ entry.npcName }}"};
+        if (!({{ entry.typeID }} in eventTypeDict)) {
+          eventTypeDict[{{ entry.typeID }}] = true;
+          eventTypes.push({ name: "{{ entry.typeName }}", id: "{{ entry.typeID }}"});
+        }
+      {% endfor %}
+    {% endif %}
+    // Build the npc filter
+    locationDataNPCFilter = {}
+    var opt = document.createElement("option");
+    opt.value= "all"
+    opt.innerHTML = "All NPCs";
+    agentSelector.appendChild(opt);
+    {% if data.npcFilter %}
+      {% for entry in data.npcFilter %}
+        var opt = document.createElement("option");
+        opt.value= {{ entry.id }};
+        opt.innerHTML = "{{ entry.name|title }} (" + npcInfo[opt.value].type + ")";
+        agentSelector.appendChild(opt);
+        locationDataNPCFilter[{{ entry.id }}] = [];
+        {% for event in entry.data %}
+          var tmpDate = new Date("{{ event.timeStamp }}");
+          locationDataNPCFilter[{{entry.id}}].push({id: parseFloat("{{ event.id }}") , typeId: parseFloat("{{ event.typeId }}"), name: "{{ event.name }}", timeStamp: tmpDate, callback: eventClicked});
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      console.log("No npc filter location data to be displayed");
+    {% endif %}
+    // Build the filter for agent type selection.
+    locationDataNPCTypeFilter = {}
+    var opt = document.createElement("option");
+    opt.value= "all"
+    opt.innerHTML = "All NPC types";
+    agentTypeSelector.appendChild(opt);
+    {% if data.npcTypeFilter %}
+      {% for entry in data.npcTypeFilter %}
+        var opt = document.createElement("option");
+        opt.value= {{ entry.id }};
+        opt.innerHTML = "{{ entry.name|title }}";
+        agentTypeSelector.appendChild(opt);
+        locationDataNPCTypeFilter[{{ entry.id }}] = [];
+        {% for event in entry.data %}
+          var tmpDate = new Date("{{ event.timeStamp }}");
+          locationDataNPCTypeFilter[{{entry.id}}].push({id: parseFloat("{{ event.id }}") , typeId: parseFloat("{{ event.typeId }}"), name: "{{ event.name }}", timeStamp: tmpDate, callback: eventClicked});
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      console.log("No location data to be displayed");
+    {% endif %}
+    // Load emotion data
+    // Start with creating emotiondict. For every NPC we create a key. 
+    {% if data.emotionTimeData %}
+      {% for entry in data.emotionTimeData %}
+        for (var key in npcEmotionData) {
+          npcEmotionData[key][{{ entry }}] = []
+        }
+      {% endfor %}
+    {% else %}
+      console.log("No emotion time data available.");
+    {% endif %}
+    {% if data.allEmotionData %}
+      {% for entry in data.allEmotionData %}
+        var npcId = {{ entry.npc }}
+        var tmpDate = new Date("{{ entry.timeStamp }}").getTime();
+        if (typeof npcEmotionData[npcId][tmpDate] != "undefined") {
+          npcEmotionData[npcId][tmpDate].push({ type : {{ entry.id }}, intensity : {{ entry.intensity }}, name : "{{ entry.name }}" })
+        }
+      {% endfor %}
+    {% else %}
+      console.log("No emotion data available.");
+    {% endif %}
+    console.log(npcEmotionData);
+    // Now we must populate "the gaps" in the emotion dictionary.
+    /*for (var npc in npcEmotionData) {
+      var emotionalState = {}
+      for (var time in npcEmotionData[npc]) {
+        if (npcEmotionData[npc][time] == [] && isEmpty(emotionalState)) {
+          continue;
+        }
+        for (var emotion in emotionalState) {
+          var found = false;
+          for (var i = 0; i < npcEmotionData[npc][time].length; i++) {
+            if (npcEmotionData[npc][time][i].type == emotion) {
+              found = true;
+            }
+          }
+          if (!found) {
+            npcEmotionData[npc][time].push({ type: emotion, intensity: emotionalState[emotion]});
+          }
+        }
+        // Update the emotionalState
+        emotionalState = {};
+        for (var i = 0; i < npcEmotionData[npc][time].length; i++) {
+          emotionalState[npcEmotionData[npc][time][i].type] = npcEmotionData[npc][time][i].intensity;
+        }
+      }
+    }*/
+    //console.log(npcEmotionData);
+    
+    
+    function isEmpty(map) {
+     for(var key in map) {
+        if (map.hasOwnProperty(key)) {
+           return false;
+        }
+     }
+     return true;
+    }
+
+    
+    allEmotionIntensity = []
+    {% if data.emotionIntensityLines %}
+      {% for entry in data.emotionIntensityLines %}
+        var opt = document.createElement("option");
+        opt.value= {{ entry.id }};
+        opt.innerHTML = "{{ entry.name|title }}";
+        emotionSelector.appendChild(opt);
+        emotionIntensityLines[{{ entry.id }}] = [];
+        {% for point in entry.data %}
+          emotionIntensityLines[{{ entry.id }}].push({x: "{{ point.x }}", y: "{{ point.y }}"});
+        {% endfor %}
+        allEmotionIntensity.push()
+      {% endfor %}
+    {% else %}
+      console.log("No emotion intensity data to be displayed");
+    {% endif %}
+    // Now we need to load the emotion data for individual npc types.
+    {% if data.npcTypeEmotionLines %}
+      {% for entry in data.npcTypeEmotionLines %}
+        npcTypeEmotionLines[{{ entry.id }}] = {};
+        {% for emotionType in entry.data %}
+          npcTypeEmotionLines[{{ entry.id }}][{{ emotionType.id }}] = []
+          {% for point in emotionType.data %}
+            npcTypeEmotionLines[{{ entry.id }}][{{ emotionType.id }}].push({x: "{{ point.x }}", y: "{{ point.y }}"});
+          {% endfor %}
+        {% endfor %}
+      {% endfor %}
+    {% else %}
+      console.log("No emotion intensity data for npc types");
+    {% endif %}
+    // Now we need to load the emotion data for that will be used for individual npcs.
+    {% if data.emotionData %}
+      {% for entry in data.emotionData %}
+        emotionData[{{ entry.id }}] = [];
+        {% for emotion in entry.data %}
+          emotionData[{{entry.id}}].push({x: "{{ emotion.x }}", y: "{{ emotion.y }}", npcID: {{ emotion.npcID }}});
+        {% endfor %}
+    {% endfor %}
+    {% else %}
+      console.log("No emotion data");
+    {% endif %}
+    // We have finished loading the raw data, let's display it.
+    
+    // Now we must load the locations
+    {% if data.locations %}
+      {% for entry in data.locations %}
+        if (!("{{ entry.npcID }}" in npcLocationData)) {
+          npcLocationData[{{ entry.npcID }}] = [];
+        }
+        var tmpDate = new Date("{{ entry.timeStamp }}");
+        //console.log(tmpDate);
+        //console.log("{{ entry.npcID }}");
+        /*if (!(tmpDate.getTime() in npcEmotionalStates[{{ entry.npcID }}])) {
+          npcEmotionalStates[{{ entry.npcID }}][tmpDate.getTime()] = [];
+          // Now we must insert it into the right place.
+          for (var i = 0; i < npcEmotionStateTimes.length; i++) {
+            if (tmpDate.getTime() > npcEmotionStateTimes[i]) {
+              npcEmotionStateTimes.splice(i, 0, tmpDate.getTime()); 
+              break;
+            }
+          }
+        } else {
+        } */
+        
+        var tmpX = parseFloat("{{entry.x}}");
+        var tmpY = parseFloat("{{entry.y}}");
+        npcLocationData[{{ entry.npcID }}].push({"x" : tmpX, "y" : tmpY, "time" : tmpDate.getTime() });
+        
+      {% endfor %}
+    {% else %}
+      console.log("No location data available.");
+    {% endif %}
+    
+    dataLoaded = true; 
+  }
+  
+  function changeTimeLineAgent() {
+    if (!dataLoaded) {
+      return;
+    }
+    var x = agentSelector.value;
+    var data = []
+    agentTypeSelector.selectedIndex = 0;
+    if (x == "all"){ 
+        for (key in locationDataNPCFilter) {
+          data = data.concat(locationDataNPCFilter[key]);
+        }
+        changeTimeLineData(data);
+    } else {
+      changeTimeLineData(locationDataNPCFilter[x]);
+    }
+    changeTimeLineEmotionLine();
+  }
+    
+  function changeTimelineAgentType() {
+    if (!dataLoaded) {
+      return;
+    }
+    var x = agentTypeSelector.value;
+    var data = []
+    agentSelector.selectedIndex = 0;
+    if (x == "all"){ 
+        for (key in locationDataNPCTypeFilter) {
+          data = data.concat(locationDataNPCTypeFilter[key]);
+        }
+        changeTimeLineData(data);
+    } else {
+      changeTimeLineData(locationDataNPCTypeFilter[x]);
+    }
+    changeTimeLineEmotionLine();
+  }
+  
+  function changeTimeLineEmotionLine() {
+    if (!dataLoaded) {
+      return;
+    }
+    //var x = emotionSelector.value;
+    if (agentTypeSelector.value != "all"){
+      var agentType = agentTypeSelector.value;
+      //changeTimeLineEmotionData(npcTypeEmotionLines[agentType][x]);
+    } else if (agentSelector.value != "all") {
+      // Now we need to find the data for this agent.
+      var npcID = agentSelector.value;
+      //changeTimeLineEmotionData(getNPCEmotionalData(npcID, x));
+    } else {
+      //changeTimeLineEmotionData(emotionIntensityLines[x]);
+    }
+  }
+  
+  function getNPCEmotionalData(npcID, emotionType) {
+    dataPoints = []
+    dataPoints.push({x: 0, y: 0});
+    if (emotionData.hasOwnProperty(emotionType)) {
+      for (var i = 0; i < emotionData[emotionType].length; i++) {
+        if (emotionData[emotionType][i].npcID == npcID) {
+          dataPoints.push({x: emotionData[emotionType][i].x, y: emotionData[emotionType][i].y});
+        }
+      }
+    } else {
+      tmpData = {}
+      for (var key in emotionData) {
+        if (emotionData.hasOwnProperty(key)) {
+          for (var i = 0; i < emotionData[key].length; i++) {
+            if (emotionData[key][i].npcID == npcID) {
+              if (!tmpData.hasOwnProperty(emotionData[key][i].x)) {
+                tmpData[emotionData[key][i].x] = []
+              }
+              tmpData[emotionData[key][i].x].push(emotionData[key][i].y);
+            }
+          }
+        }
+      } 
+      for (var key in tmpData) {
+        if (tmpData.hasOwnProperty(key)) {
+          sum = 0;
+          for (var i = 0; i < tmpData[key].length; i++) {
+            sum += parseFloat(tmpData[key][i]);
+          }
+          if (key - dataPoints[dataPoints.length -1].x > 2000) {
+            dataPoints.push({x: dataPoints[dataPoints.length -1].x + 1000, y: 0});
+            dataPoints.push({x: parseFloat(key) - 1000, y: 0});
+          }
+          dataPoints.push({x: parseFloat(key) , y: sum / tmpData[key].length})
+        }
+      }
+    }
+    return dataPoints;
+  }
+ </script>
+{% endblock %}

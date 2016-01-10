@@ -1,0 +1,254 @@
+{% extends "pluginBase.html" %}
+{% block pluginCustomCSS %}
+  <style>
+        #padMapContainer { height:502px; width: 502px; border-style: solid; border-width: 1px; background-size: cover;}
+        #heatMapContainer { height:502px; width: 502px; border-style: solid; border-width: 1px;}
+  </style>
+{% endblock %}
+{% block pluginCustomJS %}
+  <script src="/static/js/heatmap.js-2.0/build/heatmap.js"></script>
+  <script src="/static/js/plugins/padmap.js"></script>
+{% endblock %}
+{% block pluginTitle %}
+<h1 class="page-header">Pad Map</h1>
+{% endblock %}
+{% block pluginContent %}
+  <div class="visualization center">
+    <select id="padMapSelector" onChange="changeMapData()">
+    </select> 
+    <div id="padMapContainer">
+      <canvas id="canvas"></canvas>
+    </div>
+  </div>
+  {% if data %}
+    {% if data.pad %}      
+    {% else %}
+      <h3> No PAD data found... </h3>
+    {% endif %}
+  {% else %}
+    <h3> No data available??? </h3>
+{% endif %}
+<script>
+  var dataLoaded = false;
+  var agentSelector = document.getElementById("padMapSelector");
+  var opt = document.createElement("option");
+  var padData = {} // This is a dictionary object where the key will be npcID and the value is array of data objects.
+  opt.value= "all"
+  opt.innerHTML = "All";
+  var numberOfNpcs = 0;
+  agentSelector.appendChild(opt);
+  {% if data %}
+    {% if data.npcs %}
+        {% for npc in data.npcs %}
+          numberOfNpcs++;
+          var opt = document.createElement("option");
+          opt.value= {{npc.npcID}};
+          opt.innerHTML = {{npc.npcID}};
+          agentSelector.appendChild(opt);
+        {% endfor %}
+      {% endif %}
+  
+    {% if data.pad %}
+        {% for entry in data.pad %}
+          if (!({{entry.npcID}} in padData)) {
+          padData[{{entry.npcID}}] = []; 
+        }
+        padData[{{entry.npcID}}].push({x: {{entry.x}}, y: {{entry.y}}, p: {{entry.p}}, a: {{entry.a }}, d: {{entry.d}}});
+        {% endfor %}
+    {% endif %}
+    dataLoaded = true;
+  {% endif %}
+  document.getElementById("padMapContainer").style.backgroundImage = "url('/static/img/gamebackground.gif')";
+  var canvas = document.getElementById("canvas");
+  var width = 500;
+  var height = 500;
+  var radius = 20;
+  var alphaCenterValue = 50;
+  var edgeAlpha = 0.001;
+  var minAlpha = 0;
+  var arousalRadius = 4;
+  var padMap = new Padmap(radius, canvas, width, height, alphaCenterValue, edgeAlpha, minAlpha, arousalRadius, numberOfNpcs);
+  
+  function changeMapData() {
+    if (!dataLoaded) {
+      return;
+    }
+    var x = document.getElementById("padMapSelector").value;
+    var data = []
+    if (x == "all"){
+        for (key in padData) {
+          data = data.concat(padData[key]);
+        }
+        padMap.setData(data, numberOfNpcs);
+        //console.log(data);
+    } else {
+      //console.log(padData[x]);
+      //padMap.updateNumberOfAgents(numberOfNpcs);
+      padMap.setData(padData[x], 1);
+    }
+  }
+  
+  changeMapData();
+
+/**
+ * Water ripple effect.
+ * Original code (Java) by Neil Wallis 
+ * @link http://www.neilwallis.com/java/water.html
+ * 
+ * @author Sergey Chikuyonok (serge.che@gmail.com)
+ * @link http://chikuyonok.ru
+ */ 
+
+  (function(){
+    var width = padMap.width;
+    var height = padMap.height;
+    var ctx = padMap.ctx;
+    var half_width = width >> 1,
+        half_height = height >> 1,
+        size = width * (height + 2) * 2,
+        delay = 30,
+        oldind = width,
+        newind = width * (height + 3),
+        riprad = 5,
+        ripplemap = [],
+        last_map = [],
+        line_width = 20,
+        step = line_width * 2, 
+        count = height / line_width;
+    
+    /*
+     * Water ripple demo can work with any bitmap image
+     * (see example here: http://media.chikuyonok.ru/ripple/)
+     * But I need to draw simple artwork to bypass 1k limitation
+     */
+    
+      texture = ctx.getImageData(0, 0, width, height);
+      ripple = ctx.getImageData(0, 0, width, height);
+      
+      for (var i = 0; i < size; i++) {
+          last_map[i] = ripplemap[i] = 0;
+      }
+    
+    /**
+     * Main loop
+     */
+    function run() {
+        newframe();
+        ctx.putImageData(ripple, 0, 0);
+    }
+    
+    /**
+     * Disturb water at specified point
+     */
+    function disturb(dx, dy) {
+        dx <<= 0;
+        dy <<= 0;
+        var riprad = Math.round((padMap.padMapArousal[dx][dy][0] + 1) * 2);
+        for (var j = dy - riprad; j < dy + riprad; j++) {
+            for (var k = dx - riprad; k < dx + riprad; k++) {
+                ripplemap[oldind + (j * width) + k] += 128;
+            }
+        }
+    }
+    
+    /**
+     * Generates new ripples
+     */
+    function newframe() {
+        var a, b, data, cur_pixel, new_pixel, old_data;
+        
+        var t = oldind; oldind = newind; newind = t;
+        var i = 0;
+        
+        // create local copies of variables to decrease
+        // scope lookup time in Firefox
+        var _width = width,
+            _height = height,
+            _ripplemap = ripplemap,
+            _last_map = last_map,
+            _rd = ripple.data,
+            _td = texture.data,
+            _half_width = half_width,
+            _half_height = half_height;
+        
+        for (var y = 0; y < _height; y++) {
+            for (var x = 0; x < _width; x++) {
+                var _newind = newind + i, _mapind = oldind + i;
+                data = (
+                    _ripplemap[_mapind - _width] + 
+                    _ripplemap[_mapind + _width] + 
+                    _ripplemap[_mapind - 1] + 
+                    _ripplemap[_mapind + 1]) >> 1;
+                    
+                data -= _ripplemap[_newind];
+                data -= data >> 5;
+                
+                _ripplemap[_newind] = data;
+
+                //where data=0 then still, where data>0 then wave
+                data = 1024 - data;
+                
+                old_data = _last_map[i];
+                _last_map[i] = data;
+                
+                if (old_data != data) {
+                    //offsets
+                    a = (((x - _half_width) * data / 1024) << 0) + _half_width;
+                    b = (((y - _half_height) * data / 1024) << 0) + _half_height;
+    
+                    //bounds check
+                    if (a >= _width) a = _width - 1;
+                    if (a < 0) a = 0;
+                    if (b >= _height) b = _height - 1;
+                    if (b < 0) b = 0;
+    
+                    new_pixel = (a + (b * _width)) * 4;
+                    cur_pixel = i * 4;
+                    
+                    _rd[cur_pixel] = _td[new_pixel];
+                    _rd[cur_pixel + 1] = _td[new_pixel + 1];
+                    _rd[cur_pixel + 2] = _td[new_pixel + 2];
+                }
+                
+                ++i;
+            }
+        }
+    }
+    
+    //setInterval(run, delay);
+    
+    // generate random ripples
+   /* var rnd = Math.random;
+    setInterval(function() { 
+        for (var i = 0; i < padMap.activeArousalPixels.length; i++) {
+          if (padMap.padMapArousal[padMap.activeArousalPixels[i][0]][padMap.activeArousalPixels[i][1]][1] > 2) {
+            padMap.padMapArousal[padMap.activeArousalPixels[i][0]][padMap.activeArousalPixels[i][1]][1] = 0;
+            //disturb(padMap.activeArousalPixels[i][0], padMap.activeArousalPixels[i][1]);
+            padMap.updateArousalNeighbours(padMap.activeArousalPixels[i][0],padMap.activeArousalPixels[i][1], 40);
+          } else {
+            padMap.padMapArousal[padMap.activeArousalPixels[i][0]][padMap.activeArousalPixels[i][1]][1] += Math.pow(padMap.activeArousalPixels[i][2], 2) * 0.002;
+          }
+        }
+    }, 10); */
+    
+  })();
+
+/*    var heatmapContainer = document.getElementById("heatMapContainer2");
+    var heatmap = h337.create({
+      container: heatmapContainer,
+      radius: 10
+    });
+    var data = [];
+    for (var i = 0; i < padMap.activeArousalPixels.length; i++) {
+      var arousal = padMap.activeArousalPixels[i][2]/2;
+      data = data.concat({x: padMap.activeArousalPixels[i][0], y: padMap.activeArousalPixels[i][1], value: arousal});
+    }
+    heatmap.setData({
+              max: 5,
+              data: data
+            });    
+ */  
+    
+</script>
+{% endblock %}
+

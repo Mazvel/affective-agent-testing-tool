@@ -1,0 +1,132 @@
+#playbackControlsContainer {
+  overflow: auto;
+  width: 250px;
+}
+
+#playPauseButtonContainer {
+  width: 50px;
+  float: left;
+  clear: right;
+  padding-right: 5px;
+  padding-bottom: 2px;
+}
+
+#playSpeedControlsContainer{
+ width: 198px;
+ float: right;
+ clear: right;
+ padding-top: 5px;
+ overflow: auto;
+}
+
+#playSpeedSliderContainer {
+  float: left;
+  clear: right;
+}
+
+#playBackTimeControl {
+  padding: 5px;
+}
+
+#sliderContainer{
+  display:inline;
+  overflow:auto;
+  width: 150px;
+  padding-left: 5px;
+  padding-right: 5px;
+  height: 13px;
+}
+
+#slider .ui-slider-range { background: #ef2929; }
+#slider:hover {
+  cursor:pointer;
+  }
+#slider:hover  > .ui-slider-handle {
+  display: block;
+  }
+#slider .ui-slider-handle {
+  background: #ef2929;
+  border-color: #ef2929;
+  border-radius: 10px;
+  display: none;
+  }
+#slider .ui-slider-handle:hover {
+  background: #ef2929;
+}
+
+#slider{
+  display: inline-block;
+  width: 150px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+
+.playBackButton {
+  margin: 5px;
+  height: 32px;
+  width: 32px;
+  font-family: Arial, Tahoma, Verdana, FreeSans, sans-serif;
+  text-shadow:0 1px 1px rgba(0, 0, 0, 0.25);
+  display: inline-block;
+  white-space: nowrap;
+  line-height:1em;
+  position:relative;
+  outline: none;
+  overflow: visible;
+  cursor: pointer;
+  border-radius: 4px;
+  -moz-border-radius: 4px; 
+  -webkit-border-radius:4px; 
+  box-shadow:1px 1px 2px 0 #CCCCCC;
+  -moz-box-shadow: 1px 1px 2px 0 #CCCCCC;
+  -webkit-box-shadow: 1px 1px 2px 0 #CCCCCC;
+  
+}
+
+.playBackButton_green {
+  border: 1px solid #305875;
+  color: black;
+  background-color: black;
+}
+
+.playBackButton_green:hover {
+  color: #FBFBFB;
+  opacity:0.9; 
+  filter:alpha(opacity=90);        
+}
+
+
+.play {
+  background: url(/static/img/playIconSmall.png) 4px 4px no-repeat;
+}
+
+.pause {
+  background: url(/static/img/pauseIconSmall.png) 6px 6px no-repeat;
+}
+
+.playbackRelative{
+  margin: 20px;
+}
+
+.playbackFixed{
+  border: 1px solid #305875;
+  background-color: #fefefe;  
+  position:fixed;
+  top: 50px;
+  border-radius: 4px;
+  margin-left: -125px;
+  z-index: 2000;
+}
+
+.overFlow {
+  overFlow:auto;
+}
+#playBackSpeedIndicator{
+  float: right;
+  display: inline;
+  padding-left: 4px;
+  padding-right: 13px;
+  margin-top: 3px;
+  font-size: 20px;
+}
